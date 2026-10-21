@@ -1,0 +1,23 @@
+.card { display: flex; flex-direction: column; gap: 18px; }
+
+.progress-head { display: flex; justify-content: space-between; font-size: 0.9rem; font-weight: 600; margin-bottom: 6px; }
+.progress-track { height: 8px; border-radius: 999px; background: var(--bg-subtle); overflow: hidden; }
+.progress-fill { height: 100%; background: var(--primary); transition: width 400ms ease; }
+.progress-fill.failed { background: var(--danger); }
+
+.steps { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.step { display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-bottom: 1px solid var(--border); }
+.step:last-child { border-bottom: none; }
+.step-marker {
+  width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0;
+  background: var(--bg-subtle); color: var(--text-subtle);
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.step-label { flex: 1; font-weight: 600; }
+.step-state { font-size: 0.84rem; color: var(--text-subtle); }
+.step-completed .step-marker { background: var(--success-soft); color: var(--success); }
+.step-in_progress .step-marker { background: var(--info-soft); color: var(--info); }
+.step-in_progress .step-state { color: var(--info); }
+.step-failed .step-marker { background: var(--danger-soft); color: var(--danger); }
+.step-failed .step-state { color: var(--danger); }
+.step-pending .step-label { color: var(--text-muted); font-weight: 500; }

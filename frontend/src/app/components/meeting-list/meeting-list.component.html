@@ -1,0 +1,142 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Meetings</h1>
+      <p class="page-subtitle">Find, open and manage your processed meetings.</p>
+    </div>
+    <a routerLink="/upload" class="btn btn-primary"><app-icon name="upload" /> Upload recording</a>
+  </header>
+
+  <section class="card toolbar" aria-label="Filter meetings">
+    <form class="search-row" (ngSubmit)="applySearch()" role="search">
+      <label class="sr-only" for="meeting-search">Search by title or file name</label>
+      <div class="input-with-icon">
+        <app-icon name="search" [size]="16" />
+        <input id="meeting-search" class="form-control" type="search" name="q" [(ngModel)]="searchText"
+               placeholder="Search by title or file name" maxlength="200" autocomplete="off">
+      </div>
+      <button type="submit" class="btn btn-secondary">Search</button>
+      @if (searchText) {
+        <button type="button" class="btn btn-ghost" (click)="clearSearch()">Clear</button>
+      }
+    </form>
+    <div class="filter-row">
+      <div class="segmented" role="group" aria-label="Status">
+        @for (f of filters; track f.label) {
+          <button type="button" class="segment" [attr.aria-pressed]="status === f.value" (click)="setStatus(f.value)">
+            {{ f.label }}
+            @if (countFor(f.value) !== null) { <span class="segment-count">{{ countFor(f.value) }}</span> }
+          </button>
+        }
+      </div>
+      <label class="sort">
+        <span class="form-label">Sort</span>
+        <select class="form-control" [ngModel]="sort" (ngModelChange)="setSort($event)" name="sort">
+          @for (s of sorts; track s.value) { <option [value]="s.value">{{ s.label }}</option> }
+        </select>
+      </label>
+    </div>
+  </section>
+
+  @if (error()) {
+    <div class="notice notice-error" role="alert">
+      <app-icon name="alert" />
+      <span class="notice-body">{{ error() }}</span>
+      <button type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+    </div>
+  }
+
+  <section class="card list-card">
+    @if (loading()) {
+      <div aria-busy="true" aria-label="Loading meetings">
+        @for (i of [1, 2, 3, 4]; track i) { <div class="skeleton skeleton-row"></div> }
+      </div>
+    } @else if (page()?.items?.length) {
+      <div class="table-wrap">
+        <table class="table">
+          <caption class="sr-only">Meetings</caption>
+          <thead>
+            <tr>
+              <th scope="col">Meeting</th>
+              <th scope="col">Status</th>
+              <th scope="col" class="num hide-sm">Duration</th>
+              <th scope="col" class="num hide-sm">Speakers</th>
+              <th scope="col" class="hide-md">Language</th>
+              <th scope="col" class="hide-sm">Uploaded</th>
+              <th scope="col" class="actions"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (m of page()!.items; track m.id) {
+              <tr>
+                <td>
+                  <a class="cell-title" [routerLink]="openLink(m)">{{ meetingName(m) }}</a>
+                  @if (m.title && m.filename && m.title !== m.filename) { <span class="cell-sub">{{ m.filename }}</span> }
+                  @if (m.error) { <span class="cell-sub cell-error">{{ m.error.message }}</span> }
+                </td>
+                <td><app-status-badge [status]="m.status" /></td>
+                <td class="num hide-sm">{{ formatDuration(m.duration_seconds) }}</td>
+                <td class="num hide-sm">{{ m.speaker_count ?? '—' }}</td>
+                <td class="hide-md">{{ languageName(m.language) ?? '—' }}</td>
+                <td class="hide-sm">{{ m.uploaded_at ? (m.uploaded_at | date: 'mediumDate') : '—' }}</td>
+                <td class="actions">
+                  @if (m.status === 'failed') {
+                    <button type="button" class="btn btn-secondary btn-sm" (click)="retry(m)" [disabled]="retrying() === m.id">
+                      <app-icon name="refresh" [size]="14" /> {{ retrying() === m.id ? 'Restarting…' : 'Try again' }}
+                    </button>
+                  }
+                  <button type="button" class="btn btn-danger-soft btn-sm" (click)="confirmDelete(m)"
+                          [disabled]="m.status === 'processing'"
+                          [attr.aria-label]="'Delete ' + meetingName(m)"
+                          [title]="m.status === 'processing' ? 'A meeting can be deleted once processing has finished' : 'Delete'">
+                    <app-icon name="trash" [size]="14" />
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (page()!.pages > 1) {
+        <nav class="pagination" aria-label="Pages">
+          <span class="muted">Page {{ page()!.page }} of {{ page()!.pages }} · {{ page()!.total }} meetings</span>
+          <div class="pagination-buttons">
+            <button type="button" class="btn btn-secondary btn-sm" [disabled]="page()!.page <= 1" (click)="goTo(page()!.page - 1)">Previous</button>
+            <button type="button" class="btn btn-secondary btn-sm" [disabled]="page()!.page >= page()!.pages" (click)="goTo(page()!.page + 1)">Next</button>
+          </div>
+        </nav>
+      }
+    } @else if (!error()) {
+      <div class="state">
+        <span class="state-icon"><app-icon name="search" [size]="22" /></span>
+        @if (searchText || status) {
+          <h3>No meetings match these filters</h3>
+          <p>Try a different search term or show all meetings.</p>
+          <button type="button" class="btn btn-secondary" (click)="resetFilters()">Show all meetings</button>
+        } @else {
+          <h3>No meetings yet</h3>
+          <p>Upload a meeting recording to get started.</p>
+          <a routerLink="/upload" class="btn btn-primary">Upload recording</a>
+        }
+      </div>
+    }
+  </section>
+</div>
+
+@if (pendingDelete(); as m) {
+  <div class="modal-backdrop" (click)="!deleting() && pendingDelete.set(null)">
+    <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="delete-title" aria-describedby="delete-desc"
+         (click)="$event.stopPropagation()" (keydown.escape)="!deleting() && pendingDelete.set(null)">
+      <h2 id="delete-title">Delete this meeting?</h2>
+      <p id="delete-desc">"{{ meetingName(m) }}" and its transcript, summary, decisions and action items will be
+        permanently deleted. This cannot be undone.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" (click)="pendingDelete.set(null)" [disabled]="deleting()" autofocus>Cancel</button>
+        <button type="button" class="btn btn-danger" (click)="delete()" [disabled]="deleting()">
+          @if (deleting()) { <span class="spinner"></span> Deleting… } @else { Delete meeting }
+        </button>
+      </div>
+    </div>
+  </div>
+}

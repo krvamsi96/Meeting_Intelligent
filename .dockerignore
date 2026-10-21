@@ -1,0 +1,55 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# .dockerignore — AI Meeting Intelligence Platform
+# Keeps build context lean — only send what the Dockerfile needs.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Python virtual environment and caches
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+*.egg-info/
+.eggs/
+
+# psycopg2 leftover from accidental --target install (must not enter image)
+psycopg2/
+psycopg2_binary.libs/
+psycopg2_binary-*.dist-info/
+
+# Uploaded files and ChromaDB (large, mounted as Docker volumes)
+uploads/
+chroma_db/
+nemo_cache/
+data/
+
+# Git history (not needed at runtime)
+.git/
+.gitattributes
+.gitignore
+
+# Environment files (injected at runtime via docker-compose)
+.env
+.env.example
+
+# Test artefacts
+*.log
+*.tmp
+htmlcov/
+.coverage
+
+# IDE and OS noise
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db
+
+# Windows deployment archive
+AI_Meeting_Intelligence_Windows.zip
+AI_Meeting_Intelligence_Windows/
+
+# Node (if frontend is built separately)
+node_modules/
+frontend/node_modules/
+.next/

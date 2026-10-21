@@ -1,0 +1,57 @@
+.skip-link {
+  position: absolute; left: 12px; top: -48px; z-index: 2000;
+  background: var(--primary); color: var(--on-primary); padding: 8px 14px; border-radius: var(--radius-sm);
+}
+.skip-link:focus { top: 12px; }
+
+.shell { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: 240px; flex-shrink: 0; position: fixed; inset: 0 auto 0 0; z-index: 900;
+  background: var(--bg-surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; padding: 16px 12px; gap: 18px;
+}
+.brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px; }
+.brand-mark {
+  width: 34px; height: 34px; border-radius: var(--radius-md); display: grid; place-items: center;
+  background: var(--primary); color: var(--on-primary);
+}
+.brand-name { font-weight: 700; font-size: 1rem; }
+nav { display: flex; flex-direction: column; gap: 2px; }
+.nav-link {
+  display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: var(--radius-sm);
+  color: var(--text-muted); text-decoration: none; font-weight: 600; font-size: 0.92rem;
+}
+.nav-link:hover { background: var(--bg-hover); color: var(--text); }
+.nav-link.active { background: var(--primary-soft); color: var(--primary); }
+
+.main { flex: 1; min-width: 0; margin-left: 240px; display: flex; flex-direction: column; }
+.topbar {
+  display: none; position: sticky; top: 0; z-index: 800; align-items: center; gap: 8px;
+  padding: 8px 12px; background: var(--bg-surface); border-bottom: 1px solid var(--border);
+}
+.topbar-title { font-weight: 700; flex: 1; }
+.main > .topbar + * { margin-top: 0; }
+.service-banner { margin: 16px 32px 0; }
+.content { flex: 1; padding: 28px 32px 48px; outline: none; }
+
+.close-menu, .open-menu { display: none; }
+.scrim { display: none; }
+
+/* desktop: theme toggle lives at the top right of the content */
+@media (min-width: 961px) {
+  .topbar { display: flex; position: fixed; top: 12px; right: 16px; left: auto; padding: 0; border: none; background: transparent; }
+  .topbar-title, .open-menu { display: none; }
+}
+
+@media (max-width: 960px) {
+  .sidebar { transform: translateX(-100%); transition: transform 200ms ease; box-shadow: var(--shadow-lg); }
+  .sidebar.open { transform: none; }
+  .close-menu { display: inline-flex; margin-left: auto; }
+  .open-menu { display: inline-flex; }
+  .scrim { display: block; position: fixed; inset: 0; background: rgba(15, 20, 28, 0.4); z-index: 850; }
+  .main { margin-left: 0; }
+  .topbar { display: flex; }
+  .content { padding: 20px 16px 40px; }
+  .service-banner { margin: 12px 16px 0; }
+}

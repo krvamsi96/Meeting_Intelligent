@@ -1,0 +1,81 @@
+<div class="page page-narrow">
+  <a routerLink="/meetings" class="back-link"><app-icon name="arrowLeft" [size]="16" /> All meetings</a>
+
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Processing your meeting</h1>
+      <p class="page-subtitle">You can leave this page; processing continues and the results appear under Meetings.</p>
+    </div>
+    @if (status(); as s) { <app-status-badge [status]="s.status" /> }
+  </header>
+
+  @if (loadError()) {
+    <div class="notice notice-error" role="alert">
+      <app-icon name="alert" />
+      <span class="notice-body">{{ loadError() }}</span>
+      <button type="button" class="btn btn-secondary btn-sm" (click)="reload()">Try again</button>
+    </div>
+  } @else if (!status()) {
+    <div class="card" aria-busy="true">
+      <div class="skeleton skeleton-line" style="width: 40%"></div>
+      <div class="skeleton skeleton-line"></div>
+      <div class="skeleton skeleton-line" style="width: 70%"></div>
+    </div>
+  }
+
+  @if (status(); as s) {
+    <section class="card">
+      @if (connectionTrouble()) {
+        <div class="notice notice-warning" role="status">
+          <app-icon name="alert" />
+          <span class="notice-body">Connection problem — the status shown may be out of date. Retrying…</span>
+        </div>
+      }
+
+      <div class="progress" role="progressbar" aria-label="Processing progress"
+           [attr.aria-valuenow]="s.progress_percent" aria-valuemin="0" aria-valuemax="100">
+        <div class="progress-head">
+          <span>{{ s.status === 'completed' ? 'Finished' : s.status === 'failed' ? 'Stopped' : 'Working on it…' }}</span>
+          <span class="mono-time">{{ s.progress_percent }}%</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" [class.failed]="s.status === 'failed'" [style.width.%]="s.progress_percent"></div></div>
+      </div>
+
+      <ol class="steps">
+        @for (step of s.steps; track step.key) {
+          <li class="step" [class]="'step step-' + step.state">
+            <span class="step-marker" aria-hidden="true">
+              @switch (step.state) {
+                @case ('completed') { <app-icon name="check" [size]="14" /> }
+                @case ('failed') { <app-icon name="close" [size]="14" /> }
+                @case ('in_progress') { <span class="spinner"></span> }
+                @default { <span class="dot"></span> }
+              }
+            </span>
+            <span class="step-label">{{ step.label }}</span>
+            <span class="step-state">{{ stepLabels[step.state] }}</span>
+          </li>
+        }
+      </ol>
+
+      @if (s.status === 'completed') {
+        <div class="notice notice-success">
+          <app-icon name="checkCircle" />
+          <span class="notice-body">
+            Your meeting is ready.
+            @if (s.has_warnings) { Some parts may be incomplete — check the results. }
+          </span>
+          <button type="button" class="btn btn-primary btn-sm" (click)="openResults()">View results</button>
+        </div>
+      } @else if (s.status === 'failed') {
+        <div class="notice notice-error" role="alert">
+          <app-icon name="alert" />
+          <span class="notice-body">{{ s.error || "We couldn't process this meeting. Please try again." }}</span>
+          <button type="button" class="btn btn-secondary btn-sm" (click)="retry()" [disabled]="retrying()">
+            {{ retrying() ? 'Restarting…' : 'Try again' }}
+          </button>
+        </div>
+      }
+    </section>
+  }
+</div>

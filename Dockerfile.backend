@@ -1,0 +1,103 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Backend Dockerfile — AI Meeting Intelligence Platform
+# Production-ready multi-stage Python build
+# ─────────────────────────────────────────────────────────────────────────────
+
+FROM python:3.11-slim AS builder
+
+WORKDIR /build
+
+# Build-time system deps (gcc for native extensions, ffmpeg for audio processing)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    libsndfile1-dev \
+    ffmpeg \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python -m venv /build/venv
+ENV PATH="/build/venv/bin:$PATH"
+
+COPY backend/requirements.docker.txt ./requirements.txt
+# Install PyTorch CPU build first (torch-dependent packages resolve correctly)
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir torch --extra-index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir -r requirements.txt
+
+# ─────────────────────────────────────────────────────────────────────────────
+FROM python:3.11-slim AS runtime
+
+LABEL maintainer="AI Meeting Intelligence Platform"
+LABEL description="Production FastAPI backend for AI Meeting Intelligence"
+
+WORKDIR /app
+
+# Runtime-only system deps (no build tools). libmagic1: content-based upload type checks (python-magic).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    libsndfile1 \
+    libmagic1 \
+    curl \
+    gosu \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /build/venv /app/venv
+ENV PATH="/app/venv/bin:$PATH" \
+    PYTHONPATH="/app" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+COPY backend/ ./backend/
+COPY pytest.ini ./pytest.ini
+COPY models/ ./models/
+
+# Vector database: ChromaDB, persisted to a directory that docker-compose mounts on a named volume
+# (never rely on the container filesystem). One process owns that directory, hence one worker below.
+ENV VECTOR_DB=chromadb \
+    CHROMA_PERSIST_DIRECTORY=/app/data/chroma
+
+# Offline environment enforcement
+ENV HF_HUB_OFFLINE=1 \
+    TRANSFORMERS_OFFLINE=1 \
+    HF_DATASETS_OFFLINE=1 \
+    OFFLINE_MODE=true \
+    MODEL_BASE_PATH=/app/models \
+    EMBEDDING_MODEL_PATH=/app/models/embeddings/all-MiniLM-L6-v2
+
+# Never bake a Git LFS pointer into the image: the build fails unless the copied weights are the real model
+# (size + SHA-256 pinned by the repository). deploy_docker.sh runs `git lfs pull` on the host before building.
+RUN python -m backend.scripts.ensure_embedding_model --no-fetch
+
+# Create all required runtime directories
+RUN mkdir -p /app/uploads /app/uploads/clips /app/data/chroma /app/nemo_cache /app/models/embeddings /app/models/diarization
+
+# Create non-root user for security. It needs a WRITABLE home: a system user created without one has HOME=/home/appuser
+# (which does not exist and cannot be created), and NeMo / torch / matplotlib / Hugging Face libraries that cache under
+# ~/.cache then fail with "Permission denied" - silently pushing speaker diarization onto its weak fallback embedder.
+# (gosu sets HOME from the passwd entry, so the home must be the user's real one; the cache variables cover the rest.)
+ENV XDG_CACHE_HOME=/app/.cache \
+    MPLCONFIGDIR=/app/.cache/matplotlib \
+    TORCH_HOME=/app/nemo_cache/torch
+RUN useradd -r -u 999 -g root -d /app/.home appuser && \
+    mkdir -p /app/.home /app/.cache/matplotlib /app/nemo_cache/torch /app/logs && \
+    chown -R appuser:root /app
+
+# Volumes mounted at runtime have ownership fixed in ENTRYPOINT before dropping to appuser
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
+    CMD curl -f http://localhost:8000/api/v1/system/health || exit 1
+
+# ENTRYPOINT re-applies volume ownership before exec'ing uvicorn.
+# uvicorn only accepts a LOWERCASE --log-level, but .env / compose say LOG_LEVEL=INFO: lower-case it here.
+ENTRYPOINT ["sh", "-c", "\
+    gosu root chown -R appuser:root /app/uploads /app/data /app/nemo_cache /app/models 2>/dev/null || true && \
+    exec gosu appuser python -m uvicorn backend.main:app \
+        --host 0.0.0.0 \
+        --port 8000 \
+        --workers ${UVICORN_WORKERS:-1} \
+        --log-level $(printf '%s' \"${LOG_LEVEL:-info}\" | tr '[:upper:]' '[:lower:]') \
+"]

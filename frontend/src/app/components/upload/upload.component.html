@@ -1,0 +1,102 @@
+<div class="page page-narrow">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Upload recording</h1>
+      <p class="page-subtitle">Upload an audio or video recording of a meeting. You will get a transcript with speakers,
+        a summary, minutes, decisions and action items.</p>
+    </div>
+  </header>
+
+  @if (optionsError()) {
+    <div class="notice notice-error" role="alert">
+      <app-icon name="alert" />
+      <span class="notice-body">{{ optionsError() }}</span>
+      <button type="button" class="btn btn-secondary btn-sm" (click)="loadOptions()">Try again</button>
+    </div>
+  }
+
+  <form class="card upload-card" (ngSubmit)="submit()" novalidate>
+    <div class="dropzone" [class.dragging]="dragging()" [class.has-file]="!!file()"
+         (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event)">
+      @if (file(); as f) {
+        <div class="file-row">
+          <span class="file-icon"><app-icon name="audio" [size]="22" /></span>
+          <span class="file-info">
+            <span class="file-name">{{ f.name }}</span>
+            <span class="subtle">{{ formatFileSize(f.size) }}</span>
+          </span>
+          @if (!uploading()) {
+            <button type="button" class="btn btn-ghost btn-sm" (click)="removeFile()">Remove</button>
+          }
+        </div>
+      } @else {
+        <span class="drop-icon"><app-icon name="upload" [size]="26" /></span>
+        <p class="drop-title">Drag and drop a recording here</p>
+        <p class="subtle">or</p>
+        <label class="btn btn-secondary" [class.disabled]="!options()">
+          Choose a file
+          <input type="file" class="sr-only" [accept]="accept()" (change)="onPick($event)" [disabled]="!options()">
+        </label>
+        @if (options(); as o) {
+          <p class="form-hint drop-hint">Audio or video ({{ o.accepted_extensions.join(', ') }}), up to {{ o.max_file_size_mb }} MB.</p>
+        }
+      }
+    </div>
+
+    @if (fileError()) {
+      <div class="notice notice-error" role="alert"><app-icon name="alert" /><span class="notice-body">{{ fileError() }}</span></div>
+    }
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label" for="title">Meeting title <span class="subtle">(optional)</span></label>
+        <input id="title" name="title" class="form-control" [(ngModel)]="title" maxlength="200"
+               placeholder="For example: Weekly project review" [disabled]="uploading()">
+      </div>
+
+      @if (options(); as o) {
+        <div class="form-group">
+          <label class="form-label" for="language">Spoken language</label>
+          <select id="language" name="language" class="form-control" [(ngModel)]="language" [disabled]="uploading()"
+                  [attr.aria-required]="o.language_required">
+            @if (o.language_detection) {
+              <option value="">Detect automatically</option>
+            } @else if (!o.default_language) {
+              <option value="" disabled>Choose the language</option>
+            }
+            @for (l of o.languages; track l.code) { <option [value]="l.code">{{ l.name }}</option> }
+          </select>
+          <span class="form-hint">
+            @if (o.language_detection) { Choosing the language can improve the transcript. }
+            @else { The transcript is produced in the language you choose, so pick the one that is spoken. }
+          </span>
+        </div>
+      }
+    </div>
+
+    @if (uploading()) {
+      <div class="progress" role="progressbar" aria-label="Upload progress" [attr.aria-valuenow]="progress()" aria-valuemin="0" aria-valuemax="100">
+        <div class="progress-head"><span>Uploading…</span><span class="mono-time">{{ progress() }}%</span></div>
+        <div class="progress-track"><div class="progress-fill" [style.width.%]="progress()"></div></div>
+      </div>
+    }
+
+    @if (uploadError()) {
+      <div class="notice notice-error" role="alert"><app-icon name="alert" /><span class="notice-body">{{ uploadError() }}</span></div>
+    }
+
+    <div class="form-actions">
+      @if (uploading()) {
+        <button type="button" class="btn btn-secondary" (click)="cancel()">Cancel upload</button>
+      } @else {
+        <a routerLink="/meetings" class="btn btn-ghost">Cancel</a>
+      }
+      <button type="submit" class="btn btn-primary" [disabled]="!canSubmit()">
+        @if (uploading()) { <span class="spinner"></span> Uploading… } @else { Upload and process }
+      </button>
+    </div>
+  </form>
+
+  <p class="privacy-note subtle">Recordings are processed automatically. Processing usually takes a few minutes,
+    depending on the length of the recording.</p>
+</div>

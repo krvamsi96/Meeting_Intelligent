@@ -1,0 +1,73 @@
+<a class="skip-link" href="#main">Skip to content</a>
+
+<div class="shell">
+  <aside class="sidebar" [class.open]="menuOpen()" aria-label="Main navigation">
+    <div class="brand">
+      <span class="brand-mark"><app-icon name="logo" [size]="20" /></span>
+      <span class="brand-name">Meeting Intelligence</span>
+      <button type="button" class="btn btn-ghost btn-icon close-menu" (click)="menuOpen.set(false)" aria-label="Close menu">
+        <app-icon name="close" />
+      </button>
+    </div>
+    <nav>
+      @for (item of nav; track item.path) {
+        <a class="nav-link" [routerLink]="item.path" routerLinkActive="active" ariaCurrentWhenActive="page">
+          <app-icon [name]="item.icon" />
+          <span>{{ item.label }}</span>
+        </a>
+      }
+    </nav>
+  </aside>
+  @if (menuOpen()) {
+    <div class="scrim" (click)="menuOpen.set(false)" aria-hidden="true"></div>
+  }
+
+  <div class="main">
+    <header class="topbar">
+      <button type="button" class="btn btn-ghost btn-icon open-menu" (click)="menuOpen.set(true)" aria-label="Open menu">
+        <app-icon name="menu" />
+      </button>
+      <span class="topbar-title">Meeting Intelligence</span>
+      <button type="button" class="btn btn-ghost btn-icon" (click)="toggleTheme()"
+              [attr.aria-label]="dark() ? 'Switch to light theme' : 'Switch to dark theme'">
+        <app-icon [name]="dark() ? 'sun' : 'moon'" />
+      </button>
+    </header>
+
+    @if (serviceUnreachable()) {
+      <div class="notice notice-error service-banner" role="alert">
+        <app-icon name="alert" />
+        <span class="notice-body">The service cannot be reached right now. Some information may be out of date.</span>
+        <button type="button" class="btn btn-secondary btn-sm" (click)="checkService()">Try again</button>
+      </div>
+    } @else if (service(); as s) {
+      @if (s.status === 'unavailable') {
+        <div class="notice notice-error service-banner" role="alert">
+          <app-icon name="alert" />
+          <span class="notice-body">The service is temporarily unavailable. Please try again later.</span>
+        </div>
+      } @else if (!s.can_search) {
+        <div class="notice notice-warning service-banner" role="status">
+          <app-icon name="alert" />
+          <span class="notice-body">Search is temporarily unavailable. Everything else works normally.</span>
+        </div>
+      }
+    }
+
+    <main id="main" class="content" tabindex="-1">
+      <router-outlet />
+    </main>
+  </div>
+</div>
+
+<div class="toast-stack" aria-live="polite">
+  @for (t of notifications.toasts(); track t.id) {
+    <div class="toast" [class]="'toast toast-' + t.kind" [attr.role]="t.kind === 'error' ? 'alert' : 'status'">
+      <app-icon [name]="t.kind === 'error' ? 'alert' : 'checkCircle'" />
+      <span>{{ t.text }}</span>
+      <button type="button" class="btn btn-ghost" (click)="notifications.dismiss(t.id)" aria-label="Dismiss">
+        <app-icon name="close" [size]="14" />
+      </button>
+    </div>
+  }
+</div>

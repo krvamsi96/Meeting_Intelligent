@@ -1,0 +1,72 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Dashboard</h1>
+      <p class="page-subtitle">An overview of your meetings and their results.</p>
+    </div>
+    <a routerLink="/upload" class="btn btn-primary"><app-icon name="upload" /> Upload recording</a>
+  </header>
+
+  @if (error()) {
+    <div class="notice notice-error" role="alert">
+      <app-icon name="alert" />
+      <span class="notice-body">{{ error() }}</span>
+      <button type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+    </div>
+  }
+
+  <section class="stats" aria-label="Meeting totals">
+    @for (stat of stats(); track stat.label) {
+      <a class="card stat" [routerLink]="'/meetings'" [queryParams]="stat.link ? { status: stat.link } : {}">
+        <span class="stat-icon" [class]="'stat-icon tone-' + stat.tone"><app-icon [name]="stat.icon" [size]="20" /></span>
+        <span class="stat-text">
+          <span class="stat-label">{{ stat.label }}</span>
+          @if (loading()) {
+            <span class="skeleton stat-skeleton" aria-hidden="true"></span>
+          } @else {
+            <span class="stat-value">{{ page() ? stat.value : '—' }}</span>
+          }
+        </span>
+      </a>
+    }
+  </section>
+
+  <section class="card">
+    <div class="card-header">
+      <h2 class="card-title">Recent meetings</h2>
+      <a routerLink="/meetings" class="btn btn-ghost btn-sm">View all <app-icon name="arrowRight" [size]="16" /></a>
+    </div>
+
+    @if (loading()) {
+      <div aria-busy="true" aria-label="Loading meetings">
+        @for (i of [1, 2, 3]; track i) { <div class="skeleton skeleton-row"></div> }
+      </div>
+    } @else if (page()?.items?.length) {
+      <ul class="recent-list">
+        @for (m of page()!.items; track m.id) {
+          <li>
+            <a class="recent-item" [routerLink]="m.status === 'processing' ? ['/meetings', m.id, 'progress'] : ['/meetings', m.id]">
+              <span class="recent-icon"><app-icon name="audio" /></span>
+              <span class="recent-main">
+                <span class="recent-title">{{ meetingName(m) }}</span>
+                <span class="meta-row">
+                  @if (m.uploaded_at) { <span>{{ m.uploaded_at | date: 'mediumDate' }}</span> }
+                  @if (m.duration_seconds) { <span>{{ formatDuration(m.duration_seconds) }}</span> }
+                  @if (m.speaker_count) { <span>{{ m.speaker_count }} {{ m.speaker_count === 1 ? 'speaker' : 'speakers' }}</span> }
+                </span>
+              </span>
+              <app-status-badge [status]="m.status" />
+            </a>
+          </li>
+        }
+      </ul>
+    } @else if (!error()) {
+      <div class="state">
+        <span class="state-icon"><app-icon name="audio" [size]="22" /></span>
+        <h3>No meetings yet</h3>
+        <p>Upload a meeting recording to get a transcript, summary, decisions and action items.</p>
+        <a routerLink="/upload" class="btn btn-primary">Upload your first recording</a>
+      </div>
+    }
+  </section>
+</div>

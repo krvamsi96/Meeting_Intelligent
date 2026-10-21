@@ -1,0 +1,137 @@
+<div class="page page-narrow">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Administration · AI services</h1>
+      <p class="page-subtitle">Choose which service produces transcripts and meeting results. Only administrators can see this page.</p>
+    </div>
+    @if (settings()) { <button type="button" class="btn btn-ghost btn-sm" (click)="lock()">Sign out</button> }
+  </header>
+
+  @if (error()) {
+    <div class="notice notice-error" role="alert"><app-icon name="alert" /><span class="notice-body">{{ error() }}</span></div>
+  }
+
+  @if (needsKey()) {
+    <form class="card key-form" (ngSubmit)="unlock()">
+      <div class="form-group">
+        <label class="form-label" for="admin-key">Administrator key</label>
+        <input id="admin-key" name="adminKey" type="password" class="form-control" [(ngModel)]="adminKeyInput" autocomplete="current-password" required>
+        <span class="form-hint">Kept only in this browser tab until you sign out or close it.</span>
+      </div>
+      <button type="submit" class="btn btn-primary" [disabled]="!adminKeyInput.trim()">Continue</button>
+    </form>
+  } @else if (loading() && !settings()) {
+    <div class="card" aria-busy="true"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line" style="width: 60%"></div></div>
+  } @else if (settings(); as s) {
+    <form class="settings" (ngSubmit)="save()">
+      <section class="card">
+        <h2 class="card-title">Services in use</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="llm">Meeting results (summary, minutes, decisions, action items, questions)</label>
+            <select id="llm" name="llm" class="form-control" [(ngModel)]="llmProvider">
+              @for (p of s.supported_providers; track p.id) { <option [value]="p.id">{{ info[p.id].name }}</option> }
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="stt">Transcription</label>
+            <select id="stt" name="stt" class="form-control" [(ngModel)]="sttProvider">
+              <option value="">Same as meeting results{{ llmProvider === 'groq' || llmProvider === 'airawat' ? '' : ' (not possible)' }}</option>
+              @for (p of s.supported_providers; track p.id) {
+                @if (p.supports_transcription) { <option [value]="p.id">{{ info[p.id].name }}</option> }
+              }
+            </select>
+          </div>
+        </div>
+
+        @if (!effectiveStt()) {
+          <div class="notice notice-error" role="alert">
+            <app-icon name="alert" />
+            <span class="notice-body">{{ info[llmProvider].name }} cannot transcribe recordings. Choose a transcription service, otherwise every upload will fail.</span>
+          </div>
+        }
+        <div class="notice" [class.notice-warning]="isCloud(llmProvider) || isCloud(effectiveStt() || '')" [class.notice-info]="!isCloud(llmProvider) && !isCloud(effectiveStt() || '')">
+          <app-icon name="alert" />
+          <span class="notice-body">With these choices, meeting recordings and transcripts are sent to {{ destinations().join(' and ') }}.
+            Make sure this is allowed for your organisation's meetings.</span>
+        </div>
+        @if (s.stt_problem && !sttProvider) { <p class="form-hint">Current server setting: {{ s.stt_problem }}</p> }
+      </section>
+
+      @for (p of editable; track p) {
+        <section class="card">
+          <div class="card-header">
+            <h2 class="card-title">{{ info[p].name }}</h2>
+            <button type="button" class="btn btn-secondary btn-sm" (click)="test(p)" [disabled]="testing() === p">
+              {{ testing() === p ? 'Testing…' : 'Test connection' }}
+            </button>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" [for]="p + '-url'">Service address</label>
+              <input [id]="p + '-url'" [name]="p + '-url'" class="form-control" [(ngModel)]="forms[p].base_url" inputmode="url">
+            </div>
+            <div class="form-group">
+              <label class="form-label" [for]="p + '-model'">Model</label>
+              <div class="inline">
+                <input [id]="p + '-model'" [name]="p + '-model'" class="form-control" [(ngModel)]="forms[p].model" [attr.list]="p + '-models'">
+                <button type="button" class="btn btn-ghost btn-sm" (click)="loadModels(p)">Load list</button>
+              </div>
+              <datalist [id]="p + '-models'">@for (m of models()[p] ?? []; track m) { <option [value]="m"></option> }</datalist>
+            </div>
+            @if (p === 'groq') {
+              <div class="form-group">
+                <label class="form-label" for="groq-stt">Transcription model</label>
+                <input id="groq-stt" name="groq-stt" class="form-control" [(ngModel)]="forms.groq.whisper_model" [attr.list]="'groq-models'">
+              </div>
+            }
+            @if (p !== 'ollama') {
+              <div class="form-group">
+                <label class="form-label" [for]="p + '-key'">API key</label>
+                <input [id]="p + '-key'" [name]="p + '-key'" type="password" class="form-control" [(ngModel)]="forms[p].api_key"
+                       autocomplete="new-password" [placeholder]="forms[p].masked_key ? 'Saved (' + forms[p].masked_key + ') — type to replace' : 'Not set'">
+              </div>
+            }
+          </div>
+          @if (testResult(); as t) {
+            @if (t.provider === p) {
+              <div class="notice" [class.notice-success]="t.result.connected" [class.notice-error]="!t.result.connected" role="status">
+                <app-icon [name]="t.result.connected ? 'checkCircle' : 'alert'" />
+                <span class="notice-body">{{ t.result.message }}@if (t.result.latency_ms) { ({{ t.result.latency_ms }} ms)}</span>
+              </div>
+            }
+          }
+        </section>
+      }
+
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">{{ info.airawat.name }}</h2>
+          <button type="button" class="btn btn-secondary btn-sm" (click)="test('airawat')" [disabled]="testing() === 'airawat'">
+            {{ testing() === 'airawat' ? 'Testing…' : 'Test connection' }}
+          </button>
+        </div>
+        <dl class="facts">
+          <dt>Service address</dt><dd>{{ s.airawat.base_url || '—' }}</dd>
+          <dt>Model</dt><dd>{{ s.airawat['default_llm_model'] || '—' }}</dd>
+          <dt>API key</dt><dd>{{ s.airawat.api_key || 'Not set' }}</dd>
+        </dl>
+        <p class="form-hint">AIRAWAT is configured on the server (.env).</p>
+        @if (testResult(); as t) {
+          @if (t.provider === 'airawat') {
+            <div class="notice" [class.notice-success]="t.result.connected" [class.notice-error]="!t.result.connected" role="status">
+              <app-icon [name]="t.result.connected ? 'checkCircle' : 'alert'" /><span class="notice-body">{{ t.result.message }}</span>
+            </div>
+          }
+        }
+      </section>
+
+      <div class="save-bar">
+        <button type="button" class="btn btn-ghost" (click)="load()" [disabled]="saving()">Discard changes</button>
+        <button type="submit" class="btn btn-primary" [disabled]="saving()">
+          @if (saving()) { <span class="spinner"></span> Saving… } @else { Save settings }
+        </button>
+      </div>
+    </form>
+  }
+</div>

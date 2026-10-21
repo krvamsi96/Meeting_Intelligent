@@ -1,0 +1,63 @@
+<div class="page page-narrow">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Search meetings</h1>
+      <p class="page-subtitle">Find what was said across all your meetings. Describe what you are looking for in your own words.</p>
+    </div>
+  </header>
+
+  <form class="card search-form" role="search" (ngSubmit)="submit()">
+    <label class="sr-only" for="search-input">Search all meetings</label>
+    <div class="input-with-icon">
+      <app-icon name="search" [size]="16" />
+      <input id="search-input" name="q" class="form-control" type="search" [(ngModel)]="query" maxlength="300"
+             placeholder="For example: budget approval for next quarter" autocomplete="off">
+    </div>
+    <button type="submit" class="btn btn-primary" [disabled]="searching()">
+      @if (searching()) { <span class="spinner"></span> Searching… } @else { Search }
+    </button>
+  </form>
+
+  @if (error()) {
+    <div class="notice notice-error" role="alert"><app-icon name="alert" /><span class="notice-body">{{ error() }}</span></div>
+  }
+
+  @if (searching()) {
+    <div aria-busy="true" aria-label="Searching">
+      @for (i of [1, 2, 3]; track i) { <div class="card skeleton-card"><div class="skeleton skeleton-line" style="width: 40%"></div><div class="skeleton skeleton-line"></div></div> }
+    </div>
+  } @else if (searched()) {
+    @if (results().length) {
+      <p class="muted" role="status">{{ results().length }} {{ results().length === 1 ? 'passage' : 'passages' }} found for “{{ searched() }}”</p>
+      <ul class="results">
+        @for (r of results(); track $index) {
+          <li class="card result">
+            <div class="result-head">
+              <a class="cell-title" [routerLink]="['/meetings', r.meeting_id]" [queryParams]="transcriptLink(r)">{{ r.meeting_title || 'Meeting ' + r.meeting_id }}</a>
+              <span class="chip">{{ relevanceLabel(r.similarity) }}</span>
+            </div>
+            <div class="meta-row">
+              @if (r.speaker) { <span><app-icon name="users" [size]="14" /> {{ speakerLabel(r.speaker) }}</span> }
+              @if (r.start_seconds !== null) { <span><app-icon name="clock" [size]="14" /> {{ formatTimestamp(r.start_seconds) }}@if (r.end_seconds !== null) {–{{ formatTimestamp(r.end_seconds) }}}</span> }
+              @if (r.uploaded_at) { <span><app-icon name="calendar" [size]="14" /> {{ r.uploaded_at | date: 'mediumDate' }}</span> }
+            </div>
+            <blockquote class="quote">{{ r.text.length > 420 ? r.text.slice(0, 420) + '…' : r.text }}</blockquote>
+          </li>
+        }
+      </ul>
+      <p class="section-note">Results are ranked by how closely they relate to your search. A close match is not proof that two meetings are the same.</p>
+    } @else {
+      <div class="card state">
+        <span class="state-icon"><app-icon name="search" [size]="22" /></span>
+        <h3>No matching passages</h3>
+        <p>Nothing in your completed meetings closely relates to “{{ searched() }}”. Try other words.</p>
+      </div>
+    }
+  } @else if (!error()) {
+    <div class="card state">
+      <span class="state-icon"><app-icon name="search" [size]="22" /></span>
+      <h3>Search across your meetings</h3>
+      <p>Results show the passage, who said it and when, with a link to the meeting.</p>
+    </div>
+  }
+</div>

@@ -1,0 +1,86 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+venv/
+env/
+
+# Environment & Live Secrets
+# Single env file policy: only .env is used at runtime; .env.example is the tracked template.
+.env
+.env.*
+*.env
+!.env.example
+.secret_key
+
+# Archives & Temporary Artifacts
+*.tar.gz
+*.tar
+*.zip
+AI_Meeting_Intelligence_*/
+AI_Meeting_Intelligence_*
+test_extraction_validation/
+
+# Model Binary Weights
+models/embeddings/**/.cache/
+models/embeddings/**/onnx/
+models/embeddings/**/openvino/
+models/embeddings/**/*.bin
+models/embeddings/**/*.ot
+models/embeddings/**/*.h5
+models/diarization/
+!models/MODEL_MANIFEST.md
+!models/README.md
+!models/embeddings/all-MiniLM-L6-v2/
+!models/embeddings/all-MiniLM-L6-v2/model.safetensors
+
+# psycopg2 accidental --target installs
+psycopg2/
+psycopg2_binary.libs/
+psycopg2_binary-*.dist-info/
+
+# Database files
+*.sqlite3
+*.db
+
+# Storage & Cache Volumes
+uploads/
+chroma_db/
+nemo_cache/
+data/
+output/
+
+# Logs
+*.log
+logs/
+
+# Testing & Coverage
+.pytest_cache/
+htmlcov/
+.coverage
+
+# OS & Office lock files
+.DS_Store
+Thumbs.db
+~*
+*.docx
+*.mp4
+*.wav
+*.mp3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Frontend
+frontend/node_modules/
+frontend/.angular/
+frontend/dist/
+frontend/coverage/

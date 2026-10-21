@@ -1,0 +1,69 @@
+.detail-header { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+.header-main { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1; }
+.title-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.title-row .page-title { overflow-wrap: anywhere; }
+.header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.state-danger { background: var(--danger-soft); color: var(--danger); }
+
+.panel { min-height: 240px; }
+.panel-toolbar { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 16px; }
+
+.prose { max-width: 78ch; display: flex; flex-direction: column; gap: 10px; }
+.prose h3 { font-size: 1rem; margin-top: 10px; }
+.prose ul { padding-left: 22px; display: flex; flex-direction: column; gap: 4px; }
+
+.summary-facts { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
+.facts-title { font-size: 0.9rem; margin-bottom: 10px; color: var(--text-muted); }
+.speaking { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.speaking li { display: grid; grid-template-columns: 130px 1fr auto; gap: 10px; align-items: center; font-size: 0.88rem; }
+.speaking-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.speaking-bar { height: 8px; border-radius: 999px; background: var(--bg-subtle); overflow: hidden; }
+.speaking-bar span { display: block; height: 100%; background: var(--primary); }
+.speaking-time { color: var(--text-subtle); }
+
+.transcript { list-style: none; display: flex; flex-direction: column; }
+.utterance { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.utterance:last-child { border-bottom: none; }
+.utterance-head { display: flex; gap: 10px; align-items: baseline; margin-bottom: 4px; font-size: 0.86rem; }
+.speaker { font-weight: 700; color: var(--primary); }
+.utterance p { max-width: 90ch; }
+.original { margin-top: 6px; font-size: 0.86rem; color: var(--text-muted); }
+.original summary { cursor: pointer; color: var(--text-subtle); }
+
+.agenda { list-style: none; display: flex; flex-direction: column; gap: 18px; }
+.agenda-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.agenda-head h3 { font-size: 1rem; }
+.agenda-num {
+  width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0;
+  background: var(--primary-soft); color: var(--primary); font-size: 0.82rem; font-weight: 700;
+}
+.decision { margin-left: 36px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.decision-text { font-weight: 600; }
+.no-decision { margin-left: 36px; font-size: 0.9rem; }
+.source-meta { display: block; font-style: normal; font-size: 0.8rem; font-weight: 600; color: var(--text-subtle); margin-bottom: 2px; }
+
+.task { font-weight: 600; }
+.evidence { font-style: italic; }
+
+.ask-intro { margin-bottom: 14px; }
+.chat { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
+.suggestions { display: flex; flex-wrap: wrap; gap: 8px; }
+.suggestions .btn { white-space: normal; text-align: left; }
+.bubble { max-width: 85%; padding: 10px 14px; border-radius: var(--radius-md); display: flex; flex-direction: column; gap: 8px; }
+.bubble p { white-space: pre-wrap; }
+.bubble-user { align-self: flex-end; background: var(--primary); color: var(--on-primary); }
+.bubble-assistant { align-self: flex-start; background: var(--bg-subtle); flex-direction: row; align-items: center; gap: 8px; flex-wrap: wrap; }
+.bubble-assistant:has(.sources), .bubble-assistant:has(p) { flex-direction: column; align-items: stretch; }
+.bubble-error { align-self: flex-start; background: var(--danger-soft); color: var(--danger); }
+.sources { display: flex; flex-direction: column; gap: 6px; font-size: 0.86rem; }
+.ask-form { display: flex; gap: 8px; }
+
+@media (max-width: 760px) {
+  .summary-facts { grid-template-columns: 1fr; }
+  .speaking li { grid-template-columns: 96px 1fr; }
+  .speaking-time { grid-column: 2; }
+  .decision, .no-decision { margin-left: 0; }
+  .bubble { max-width: 100%; }
+  .hide-sm { display: none; }
+  .header-actions { width: 100%; }
+}

@@ -1,0 +1,48 @@
+================================================================================
+  AI MEETING INTELLIGENCE PLATFORM — MANUAL CMD RUN GUIDE
+================================================================================
+
+[Option 1: Quick 1-Click Run via Script]
+--------------------------------------------------------------------------------
+Simply open Command Prompt (cmd) in this project folder and run:
+    run_backend.bat
+
+
+[Option 2: Step-by-Step Manual Run in Windows CMD]
+--------------------------------------------------------------------------------
+
+Step 1: Open Command Prompt (cmd.exe) and Navigate to Project Directory:
+    cd /d c:\Users\krvam\OneDrive\Desktop\ai_meeting\AI_Meeting_Backend
+
+Step 2: Activate the Virtual Environment:
+    venv\Scripts\activate
+
+Step 3: Ensure Required Storage Folders Exist:
+    if not exist uploads mkdir uploads
+    if not exist uploads\clips mkdir uploads\clips
+    if not exist data\chroma mkdir data\chroma
+    if not exist nemo_cache mkdir nemo_cache
+    if not exist data mkdir data
+
+Step 4: Verify the Offline Embedding Model:
+    python -m backend.scripts.ensure_embedding_model
+
+Step 5: Start the Uvicorn ASGI Server:
+    python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
+
+--------------------------------------------------------------------------------
+[Access Endpoints]
+--------------------------------------------------------------------------------
+• Swagger API Documentation:  http://127.0.0.1:8000/docs
+• ReDoc API Documentation:    http://127.0.0.1:8000/redoc
+• Health Check Endpoint:      http://127.0.0.1:8000/api/v1/system/health
+
+--------------------------------------------------------------------------------
+[Database & Prerequisites Summary]
+--------------------------------------------------------------------------------
+• Python Version:   Python 3.11.9 (Verified)
+• FFmpeg:           FFmpeg 6.1.1 (Verified in PATH)
+• Database:         PostgreSQL (Auto-fallback to local 'govindb' verified)
+• Embedding Model:  models\embeddings\all-MiniLM-L6-v2 (Verified)
+• Stop Server:      Press Ctrl + C in the Command Prompt
+================================================================================

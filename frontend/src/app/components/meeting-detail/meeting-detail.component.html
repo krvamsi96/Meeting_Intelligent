@@ -1,0 +1,303 @@
+<div class="page">
+  <a routerLink="/meetings" class="back-link"><app-icon name="arrowLeft" [size]="16" /> All meetings</a>
+
+  @if (loading()) {
+    <div class="card" aria-busy="true" aria-label="Loading meeting">
+      <div class="skeleton" style="height: 28px; width: 45%"></div>
+      <div class="skeleton skeleton-line" style="width: 30%"></div>
+      <div class="skeleton" style="height: 220px; margin-top: 18px"></div>
+    </div>
+  } @else if (notFound()) {
+    <div class="card state">
+      <span class="state-icon"><app-icon name="search" [size]="22" /></span>
+      <h3>Meeting not found</h3>
+      <p>This meeting does not exist or has been deleted.</p>
+      <a routerLink="/meetings" class="btn btn-primary">Go to meetings</a>
+    </div>
+  } @else if (loadError()) {
+    <div class="notice notice-error" role="alert">
+      <app-icon name="alert" />
+      <span class="notice-body">{{ loadError() }}</span>
+      <button type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+    </div>
+  } @else if (pending(); as p) {
+    <!-- No results yet: the meeting is still being processed, or processing failed before results existed. -->
+    <div class="card state">
+      @if (p.status === 'failed') {
+        <span class="state-icon state-danger"><app-icon name="alert" [size]="22" /></span>
+        <h3>This meeting needs attention</h3>
+        <p>{{ p.user_error?.message || "We couldn't process this meeting. Please try again." }}</p>
+        <button type="button" class="btn btn-primary" (click)="retry()" [disabled]="retrying()">
+          {{ retrying() ? 'Restarting…' : 'Try again' }}
+        </button>
+      } @else {
+        <span class="state-icon"><span class="spinner"></span></span>
+        <h3>Your results are being prepared</h3>
+        <p>This meeting is still being processed. Results appear here as soon as they are ready.</p>
+        <a [routerLink]="['/meetings', id(), 'progress']" class="btn btn-primary">See progress</a>
+      }
+    </div>
+  } @else if (data(); as d) {
+    <header class="card detail-header">
+      <div class="header-main">
+        <div class="title-row">
+          <h1 class="page-title">{{ title() }}</h1>
+          <app-status-badge [status]="d.display_status || 'completed'" />
+        </div>
+        <div class="meta-row">
+          @if (d.meeting.meeting_date) {
+            <span><app-icon name="calendar" [size]="15" /> {{ d.meeting.meeting_date }}@if (d.meeting.meeting_time) {, {{ d.meeting.meeting_time }}}</span>
+          }
+          @if (d.meeting.duration_seconds) { <span><app-icon name="clock" [size]="15" /> {{ duration() }}</span> }
+          @if (speakerCount()) { <span><app-icon name="users" [size]="15" /> {{ speakerCount() }} {{ speakerCount() === 1 ? 'speaker' : 'speakers' }}</span> }
+          @if (language()) {
+            <span><app-icon name="globe" [size]="15" /> {{ language() }}@if (d.meeting.translation_applied) { · translated to English }</span>
+          }
+        </div>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="btn btn-secondary btn-sm" (click)="download('docx')" [disabled]="!!exporting()">
+          <app-icon name="download" [size]="15" /> {{ exporting() === 'docx' ? 'Preparing…' : 'Word' }}
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" (click)="download('xlsx')" [disabled]="!!exporting()">
+          <app-icon name="download" [size]="15" /> {{ exporting() === 'xlsx' ? 'Preparing…' : 'Excel' }}
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" (click)="printReport()" title="Opens a printable report you can save as PDF">
+          <app-icon name="print" [size]="15" /> Print / PDF
+        </button>
+      </div>
+    </header>
+
+    @for (w of d.warnings ?? []; track w) {
+      <div class="notice notice-warning" role="status"><app-icon name="alert" /><span class="notice-body">{{ w }}</span></div>
+    }
+
+    @if (d.display_status === 'processing') {
+      <div class="notice notice-info" role="status">
+        <app-icon name="clock" />
+        <span class="notice-body">This meeting is being processed again. The results below are from the previous run and will be replaced when it finishes.</span>
+        <a [routerLink]="['/meetings', id(), 'progress']" class="btn btn-secondary btn-sm">See progress</a>
+      </div>
+    } @else if (d.display_status === 'failed') {
+      <div class="notice notice-error" role="alert">
+        <app-icon name="alert" />
+        <span class="notice-body">The latest processing attempt did not finish: {{ d.user_error?.message || "We couldn't process this meeting." }}
+          The results below are from the previous successful run.</span>
+        <button type="button" class="btn btn-secondary btn-sm" (click)="retry()" [disabled]="retrying()">Try again</button>
+      </div>
+    }
+
+    <div class="tabs" role="tablist" aria-label="Meeting results" (keydown)="onTabKey($event)">
+      @for (t of tabs(); track t.id) {
+        <button type="button" class="tab" role="tab" [id]="'tab-' + t.id" [attr.aria-selected]="tab() === t.id"
+                [attr.aria-controls]="'panel-' + t.id" [tabindex]="tab() === t.id ? 0 : -1" (click)="selectTab(t.id)">
+          {{ t.label }}@if (t.count !== null) {<span class="tab-count">{{ t.count }}</span>}
+        </button>
+      }
+    </div>
+
+    <section class="card panel" role="tabpanel" [id]="'panel-' + tab()" [attr.aria-labelledby]="'tab-' + tab()">
+      @switch (tab()) {
+        @case ('summary') {
+          @if (summaryBlocks().length) {
+            <div class="prose">
+              @for (b of summaryBlocks(); track $index) {
+                @switch (b.type) {
+                  @case ('heading') { <h3>{{ b.text }}</h3> }
+                  @case ('list') { <ul>@for (i of b.items; track $index) { <li>{{ i }}</li> }</ul> }
+                  @default { <p>{{ b.text }}</p> }
+                }
+              }
+            </div>
+          } @else {
+            <div class="state"><h3>No summary available</h3><p>A summary was not produced for this meeting.</p></div>
+          }
+
+          @if (speakingTime().length || d.sentiment?.label) {
+            <div class="summary-facts">
+              @if (speakingTime().length) {
+                <div>
+                  <h3 class="facts-title">Speaking time</h3>
+                  <ul class="speaking">
+                    @for (s of speakingTime(); track s.label) {
+                      <li>
+                        <span class="speaking-name">{{ s.label }}</span>
+                        <span class="speaking-bar"><span [style.width.%]="s.percent"></span></span>
+                        <span class="speaking-time mono-time">{{ s.time }} · {{ s.percent }}%</span>
+                      </li>
+                    }
+                  </ul>
+                </div>
+              }
+              @if (d.sentiment?.label) {
+                <div>
+                  <h3 class="facts-title">Overall tone</h3>
+                  <span class="chip">{{ d.sentiment!.label }}</span>
+                </div>
+              }
+            </div>
+          }
+        }
+
+        @case ('transcript') {
+          <div class="panel-toolbar">
+            <div class="input-with-icon">
+              <app-icon name="search" [size]="16" />
+              <label class="sr-only" for="transcript-search">Search the transcript</label>
+              <input id="transcript-search" class="form-control" type="search" placeholder="Search the transcript"
+                     [ngModel]="transcriptQuery()" (ngModelChange)="transcriptQuery.set($event)">
+            </div>
+            <span class="subtle">{{ transcript().length }} of {{ d.transcript.length }} passages</span>
+          </div>
+          @if (transcript().length) {
+            <ol class="transcript">
+              @for (s of transcript(); track $index) {
+                <li class="utterance">
+                  <div class="utterance-head">
+                    <span class="speaker">{{ speakerLabel(s.speaker) }}</span>
+                    <span class="subtle mono-time">{{ formatTimestamp(s.start_time) }}–{{ formatTimestamp(s.end_time) }}</span>
+                  </div>
+                  <p>{{ s.text }}</p>
+                  @if (s.original_text && s.original_text !== s.text) {
+                    <details class="original"><summary>Original language</summary><p>{{ s.original_text }}</p></details>
+                  }
+                </li>
+              }
+            </ol>
+          } @else {
+            <div class="state">
+              <h3>{{ d.transcript.length ? 'No passages match your search' : 'No transcript available' }}</h3>
+              @if (transcriptQuery()) { <button type="button" class="btn btn-secondary" (click)="transcriptQuery.set('')">Clear search</button> }
+            </div>
+          }
+        }
+
+        @case ('minutes') {
+          @if (minutesBlocks().length) {
+            <div class="prose">
+              @for (b of minutesBlocks(); track $index) {
+                @switch (b.type) {
+                  @case ('heading') { <h3>{{ b.text }}</h3> }
+                  @case ('list') { <ul>@for (i of b.items; track $index) { <li>{{ i }}</li> }</ul> }
+                  @default { <p>{{ b.text }}</p> }
+                }
+              }
+            </div>
+          } @else {
+            <div class="state"><h3>No minutes available</h3><p>Minutes of meeting were not produced for this meeting.</p></div>
+          }
+        }
+
+        @case ('decisions') {
+          @if (agenda().topics.length || agenda().unlinked.length) {
+            <ol class="agenda">
+              @for (topic of agenda().topics; track topic.id; let i = $index) {
+                <li class="agenda-item">
+                  <div class="agenda-head"><span class="agenda-num">{{ i + 1 }}</span><h3>{{ topic.title }}</h3></div>
+                  @if (topic.decisions.length) {
+                    @for (dec of topic.decisions; track $index) {
+                      <ng-container *ngTemplateOutlet="decisionTpl; context: { $implicit: dec }" />
+                    }
+                  } @else {
+                    <p class="subtle no-decision">No decision was recorded for this topic.</p>
+                  }
+                </li>
+              }
+              @if (agenda().unlinked.length) {
+                <li class="agenda-item">
+                  <div class="agenda-head"><span class="agenda-num">·</span><h3>Other decisions</h3></div>
+                  @for (dec of agenda().unlinked; track $index) {
+                    <ng-container *ngTemplateOutlet="decisionTpl; context: { $implicit: dec }" />
+                  }
+                </li>
+              }
+            </ol>
+          } @else {
+            <div class="state"><h3>No agenda or decisions found</h3><p>No agenda topics or decisions were identified in this meeting.</p></div>
+          }
+        }
+
+        @case ('actions') {
+          @if (d.action_items.length) {
+            <div class="table-wrap">
+              <table class="table">
+                <caption class="sr-only">Action items</caption>
+                <thead><tr><th scope="col">Task</th><th scope="col">Owner</th><th scope="col">Due</th><th scope="col" class="hide-sm">Priority</th></tr></thead>
+                <tbody>
+                  @for (a of d.action_items; track $index) {
+                    <tr>
+                      <td>
+                        <span class="task">{{ a.task }}</span>
+                        @if (a.description && a.description !== a.task) { <span class="cell-sub">{{ a.description }}</span> }
+                        @if (a.evidence) { <span class="cell-sub evidence">“{{ a.evidence }}”</span> }
+                      </td>
+                      <td>{{ ownerLabel(a.owner) || ownerLabel(a.speaker) || 'Not assigned' }}</td>
+                      <td>{{ deadlineLabel(a.deadline, a.due_date) || 'No date given' }}</td>
+                      <td class="hide-sm">{{ a.priority || '—' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <p class="section-note">Owners and dates are shown only when they were stated in the meeting.</p>
+          } @else {
+            <div class="state"><h3>No action items</h3><p>No tasks or commitments were identified in this meeting.</p></div>
+          }
+        }
+
+        @case ('ask') {
+          <p class="muted ask-intro">Ask a question about this meeting. Answers are based on what was said in it.</p>
+          <div class="chat" aria-live="polite">
+            @if (!chat().length) {
+              <div class="suggestions">
+                @for (s of suggestions; track s) {
+                  <button type="button" class="btn btn-secondary btn-sm" (click)="ask(s)" [disabled]="asking()">{{ s }}</button>
+                }
+              </div>
+            }
+            @for (m of chat(); track $index) {
+              <div class="bubble" [class]="'bubble bubble-' + m.role">
+                <p>{{ m.text }}</p>
+                @if (m.sources?.length) {
+                  <div class="sources">
+                    <span class="subtle">Based on:</span>
+                    @for (src of m.sources; track $index) {
+                      <blockquote class="quote">
+                        @if (sourceSpeaker(src) || sourceTime(src)) {
+                          <span class="source-meta">{{ sourceSpeaker(src) }}@if (sourceTime(src)) { · {{ sourceTime(src) }}}</span>
+                        }
+                        {{ (src.text || '').slice(0, 280) }}{{ (src.text || '').length > 280 ? '…' : '' }}
+                      </blockquote>
+                    }
+                  </div>
+                }
+              </div>
+            }
+            @if (asking()) { <div class="bubble bubble-assistant"><span class="spinner"></span> Looking through the meeting…</div> }
+          </div>
+          <form class="ask-form" (ngSubmit)="ask()">
+            <label class="sr-only" for="question">Your question</label>
+            <input id="question" name="question" class="form-control" [(ngModel)]="question" maxlength="2000"
+                   placeholder="Type your question" [disabled]="asking()" autocomplete="off">
+            <button type="submit" class="btn btn-primary" [disabled]="asking() || !question.trim()">Ask</button>
+          </form>
+        }
+      }
+    </section>
+  }
+</div>
+
+<ng-template #decisionTpl let-dec>
+  <div class="decision">
+    <p class="decision-text">{{ dec.decision }}</p>
+    @if (dec.reason) { <p class="subtle">Reason: {{ dec.reason }}</p> }
+    @if (dec.evidence) {
+      <blockquote class="quote">
+        @if (dec.speaker || dec.timestamp) {
+          <span class="source-meta">{{ dec.speaker ? speakerLabel(dec.speaker) : '' }}@if (dec.timestamp) { · {{ formatTimestamp(dec.timestamp) }}}</span>
+        }
+        “{{ dec.evidence }}”
+      </blockquote>
+    }
+  </div>
+</ng-template>

@@ -1,0 +1,32 @@
+.upload-card { display: flex; flex-direction: column; gap: 18px; }
+
+.dropzone {
+  border: 2px dashed var(--border-strong); border-radius: var(--radius-lg); background: var(--bg-subtle);
+  padding: 32px 20px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center;
+  transition: border-color var(--transition), background var(--transition);
+}
+.dropzone.dragging { border-color: var(--primary); background: var(--primary-soft); }
+.dropzone.has-file { border-style: solid; padding: 16px; align-items: stretch; }
+.drop-icon { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; background: var(--bg-surface); color: var(--primary); }
+.drop-title { font-weight: 600; }
+.drop-hint { margin-top: 6px; }
+.btn.disabled { opacity: 0.55; pointer-events: none; }
+
+.file-row { display: flex; align-items: center; gap: 12px; text-align: left; }
+.file-icon { width: 42px; height: 42px; border-radius: var(--radius-md); display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); flex-shrink: 0; }
+.file-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.file-name { font-weight: 600; overflow-wrap: anywhere; }
+
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+.progress-head { display: flex; justify-content: space-between; font-size: 0.88rem; font-weight: 600; margin-bottom: 6px; }
+.progress-track { height: 8px; border-radius: 999px; background: var(--bg-subtle); overflow: hidden; }
+.progress-fill { height: 100%; background: var(--primary); transition: width 200ms ease; }
+
+.form-actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+.privacy-note { font-size: 0.85rem; text-align: center; }
+
+@media (max-width: 640px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .form-actions .btn { flex: 1; }
+}

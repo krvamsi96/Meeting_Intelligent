@@ -1,0 +1,20 @@
+{
+    "ref_transcript": "Good morning team. Today we discussed moving the project database to PostgreSQL and updating the AI performance evaluation engine.",
+    "ref_summary": "The team met to approve the database migration to PostgreSQL and implement the dynamic AI benchmark evaluation module.",
+    "ref_mom": "Decision 1: Approved PostgreSQL database migration.\nDecision 2: Approved redesigned evaluation system.",
+    "ref_action_items": [
+        "Rahul to write database migration script",
+        "Priya to update FastAPI endpoints"
+    ],
+    "ref_topics": [
+        "PostgreSQL Migration",
+        "Benchmark Engine"
+    ],
+    "ref_speaker_labels": {
+        "0": "Rahul",
+        "1": "Priya"
+    },
+    "ref_sentiment": "Positive",
+    "source": "manual",
+    "notes": "Verified human ground truth reference dataset"
+}

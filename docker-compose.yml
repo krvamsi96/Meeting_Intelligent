@@ -1,0 +1,223 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Docker Compose — AI Meeting Intelligence Platform
+# Production-ready orchestration with PostgreSQL, persistent volumes and health checks
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  # ── PostgreSQL Database Service ──────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: mom_postgres
+    restart: unless-stopped
+    # Loopback only: the backend reaches PostgreSQL over the internal mom_network (postgres:5432). Publishing
+    # it on 0.0.0.0 exposed the database to the network - and Docker-published ports bypass `ufw deny`.
+    # For admin access from another machine use an SSH tunnel (ssh -L 5432:127.0.0.1:5432 user@server).
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      - POSTGRES_DB=${DB_DATABASE:-govindb}
+      - POSTGRES_USER=${DB_USER:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-CHANGE_ME_IN_PRODUCTION}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - mom_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_DATABASE:-govindb}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── FastAPI Backend Service ──────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: mom_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # ── AI Mode ────────────────────────────────────────────────────────────
+      - AI_MODE=${AI_MODE:-auto}
+
+      # ── Database ─────────────────────────────────────────────────────────
+      # DATABASE_URL: password is URL-encoded via connection.py at runtime.
+      # Use the raw password here — the app's connection.py encodes special
+      # chars (@ ! # etc.) automatically before creating the SQLAlchemy engine.
+      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-CHANGE_ME_IN_PRODUCTION}@postgres:5432/${DB_DATABASE:-govindb}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=${DB_DATABASE:-govindb}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-CHANGE_ME_IN_PRODUCTION}
+
+      # ── Connection Pool (production sizing) ───────────────────────────────
+      - DB_POOL_SIZE=${DB_POOL_SIZE:-20}
+      - DB_MAX_OVERFLOW=${DB_MAX_OVERFLOW:-40}
+      - DB_POOL_TIMEOUT=${DB_POOL_TIMEOUT:-60}
+      - DB_POOL_RECYCLE=${DB_POOL_RECYCLE:-1800}
+      - DB_TCP_KEEPALIVES_IDLE=${DB_TCP_KEEPALIVES_IDLE:-60}
+      - DB_TCP_KEEPALIVES_INTERVAL=${DB_TCP_KEEPALIVES_INTERVAL:-10}
+      - DB_TCP_KEEPALIVES_COUNT=${DB_TCP_KEEPALIVES_COUNT:-5}
+
+      # ── Offline AI Model Configuration ────────────────────────────────────
+      - OFFLINE_MODE=${OFFLINE_MODE:-true}
+      - HF_HUB_OFFLINE=1
+      - TRANSFORMERS_OFFLINE=1
+      - HF_DATASETS_OFFLINE=1
+      - MODEL_BASE_PATH=/app/models
+      - EMBEDDING_MODEL_PATH=${EMBEDDING_MODEL_PATH:-/app/models/embeddings/all-MiniLM-L6-v2}
+      - DIARIZATION_MODEL_PATH=${DIARIZATION_MODEL_PATH:-/app/models/diarization}
+
+      # ── Storage ───────────────────────────────────────────────────────────
+      - UPLOAD_DIR=/app/uploads
+      # ChromaDB (the only vector database) persists here - the chroma_data named volume mounted below.
+      - VECTOR_DB=chromadb
+      - CHROMA_PERSIST_DIRECTORY=/app/data/chroma
+      - NEMO_CACHE_DIR=/app/nemo_cache
+      - MAX_FILE_SIZE_MB=${MAX_FILE_SIZE_MB:-500}
+
+      # ── CORS ──────────────────────────────────────────────────────────────
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001,http://localhost:80,http://localhost,http://backend:8000,http://mom_backend:8000}
+
+      # ── AIRAWAT Credentials ───────────────────────────────────────────────
+      - AIRAWAT_API_KEY=${AIRAWAT_API_KEY:-}
+      - AIRAWAT_BASE_URL=${AIRAWAT_BASE_URL:-https://apis.airawat.cdac.in/nic/llama70b/v1}
+      - AIRAWAT_WHISPER_URL=${AIRAWAT_WHISPER_URL:-https://apis.airawat.cdac.in/nic/Whisper-Large-v3/v1/audio/transcriptions}
+      - AIRAWAT_LLM_MODEL=${AIRAWAT_LLM_MODEL:-meta/llama-3.3-70b-instruct}
+      - AIRAWAT_WHISPER_MODEL=${AIRAWAT_WHISPER_MODEL:-whisper-1}
+      - AIRAWAT_TIMEOUT_SEC=${AIRAWAT_TIMEOUT_SEC:-600}
+      - AIRAWAT_RETRY_COUNT=${AIRAWAT_RETRY_COUNT:-2}
+      - AIRAWAT_WHISPER_CONNECT_TIMEOUT_SEC=${AIRAWAT_WHISPER_CONNECT_TIMEOUT_SEC:-20}
+      - AIRAWAT_WHISPER_READ_TIMEOUT_SEC=${AIRAWAT_WHISPER_READ_TIMEOUT_SEC:-180}
+      - AIRAWAT_WHISPER_READ_TIMEOUT_PER_MIN_SEC=${AIRAWAT_WHISPER_READ_TIMEOUT_PER_MIN_SEC:-10}
+      - AIRAWAT_WHISPER_READ_TIMEOUT_MAX_SEC=${AIRAWAT_WHISPER_READ_TIMEOUT_MAX_SEC:-300}
+      - AIRAWAT_RETRY_BACKOFF_BASE_SEC=${AIRAWAT_RETRY_BACKOFF_BASE_SEC:-2}
+      - AIRAWAT_RETRY_BACKOFF_MAX_SEC=${AIRAWAT_RETRY_BACKOFF_MAX_SEC:-30}
+      - AIRAWAT_LLM_STREAMING=${AIRAWAT_LLM_STREAMING:-true}
+      - AIRAWAT_LLM_FIRST_BYTE_TIMEOUT_SEC=${AIRAWAT_LLM_FIRST_BYTE_TIMEOUT_SEC:-10}
+      - DIARIZATION_OVERLAP_WITH_STT=${DIARIZATION_OVERLAP_WITH_STT:-true}
+      - AIRAWAT_LLM_STREAM_IDLE_TIMEOUT_SEC=${AIRAWAT_LLM_STREAM_IDLE_TIMEOUT_SEC:-30}
+      - AIRAWAT_LLM_CONNECT_TIMEOUT_SEC=${AIRAWAT_LLM_CONNECT_TIMEOUT_SEC:-20}
+      - AIRAWAT_MAX_TOKENS=${AIRAWAT_MAX_TOKENS:-2000}
+      - AIRAWAT_TEMPERATURE=${AIRAWAT_TEMPERATURE:-0.1}
+      - AIRAWAT_HEALTH_CHECK_TIMEOUT_SEC=${AIRAWAT_HEALTH_CHECK_TIMEOUT_SEC:-30}
+      - AIRAWAT_HEALTH_TTL_SEC=${AIRAWAT_HEALTH_TTL_SEC:-300}
+
+      # ── NeMo / Diarization ────────────────────────────────────────────────
+      - NEMO_ENABLED=${NEMO_ENABLED:-true}
+      - NEMO_DEVICE=${NEMO_DEVICE:-auto}
+      - NEMO_SPEAKER_MODEL=${NEMO_SPEAKER_MODEL:-titanet_large}
+      - ENABLE_LLM_SPEAKER_LABELS=${ENABLE_LLM_SPEAKER_LABELS:-true}
+
+      # ── AIRAWAT is the only AI provider (LLM + Whisper): a failed call is retried and then fails clearly.
+      #    AIRAWAT Whisper cannot detect a language: default for uploads that do not name one. ────────────────
+      - AIRAWAT_WHISPER_LANGUAGE=${AIRAWAT_WHISPER_LANGUAGE:-}
+      - EMBEDDING_MODEL_NAME=${EMBEDDING_MODEL_NAME:-all-MiniLM-L6-v2}
+
+      # ── Security ──────────────────────────────────────────────────────────
+      # SECRET_KEY encrypts provider API keys stored in the database. Set it (deploy_docker.sh does):
+      # left empty, a key file is generated inside the container and is lost when the container is rebuilt.
+      - SECRET_KEY=${SECRET_KEY:-}
+      - SSL_VERIFY=${SSL_VERIFY:-true}
+      # This container does not read .env (it is excluded from the image), so every setting the app should
+      # honour must be listed here. ADMIN_API_KEY guards POST /settings/* and /system/clear-cache: empty =
+      # those endpoints are OPEN. Defaults below equal the application's own defaults.
+      - ADMIN_API_KEY=${ADMIN_API_KEY:-}
+      - RATE_LIMIT_CHAT_PER_MIN=${RATE_LIMIT_CHAT_PER_MIN:-60}
+      - RATE_LIMIT_UPLOAD_PER_MIN=${RATE_LIMIT_UPLOAD_PER_MIN:-20}
+      - TRUST_FORWARDED_FOR=${TRUST_FORWARDED_FOR:-false}
+      - YTDLP_ALLOW_ANY_HOST=${YTDLP_ALLOW_ANY_HOST:-false}
+      - DOC_MAX_UNCOMPRESSED_MB=${DOC_MAX_UNCOMPRESSED_MB:-500}
+      - DOC_MAX_PDF_PAGES=${DOC_MAX_PDF_PAGES:-3000}
+      - DOC_MAX_SPREADSHEET_ROWS=${DOC_MAX_SPREADSHEET_ROWS:-200000}
+      - DOC_MAX_EXTRACTED_CHARS=${DOC_MAX_EXTRACTED_CHARS:-5000000}
+      - HF_TOKEN=${HF_TOKEN:-}
+      - PYANNOTE_ENABLED=${PYANNOTE_ENABLED:-true}
+      - DIARIZATION_MODE=${DIARIZATION_MODE:-NEMO_PRIMARY_PYANNOTE_FALLBACK}
+      - VECTOR_BACKFILL_ON_STARTUP=${VECTOR_BACKFILL_ON_STARTUP:-true}
+      - DB_SSLMODE=${DB_SSLMODE:-}
+
+      # ── Logging & Behaviour ───────────────────────────────────────────────
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - ENABLE_SWAGGER=${ENABLE_SWAGGER:-false}
+      - DEFAULT_TIMEZONE=${DEFAULT_TIMEZONE:-Asia/Kolkata}
+      - PYTHONUNBUFFERED=1
+      # An embedded ChromaDB directory is owned by ONE process: keep a single worker.
+      - UVICORN_WORKERS=${UVICORN_WORKERS:-1}
+
+      # ── Report Branding ────────────────────────────────────────────────────
+      - REPORT_COMPANY_NAME=${REPORT_COMPANY_NAME:-AI Meeting Intelligence Platform}
+      - REPORT_COMPANY_ADDRESS=${REPORT_COMPANY_ADDRESS:-}
+      - REPORT_HEADER_TEXT=${REPORT_HEADER_TEXT:-Confidential - Business Report}
+      - REPORT_FOOTER_TEXT=${REPORT_FOOTER_TEXT:-AI Meeting Intelligence Platform | Powered by AIRAWAT}
+
+    volumes:
+      - uploads:/app/uploads
+      - chroma_data:/app/data/chroma
+      - nemo_cache:/app/nemo_cache
+      - ./models:/app/models:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - mom_network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/system/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ── Next.js Frontend Service (Optional / Profile: frontend, full) ────────────
+  frontend:
+    profiles:
+      - frontend
+      - full
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-AI Meeting Intelligence}
+    container_name: mom_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - mom_network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+# ── Persistent Volumes ──────────────────────────────────────────────────────────
+volumes:
+  pgdata:
+    driver: local
+  uploads:
+    driver: local
+  chroma_data:
+    driver: local
+  # nemo_cache: persists NeMo speaker diarization models (~1-2 GB) across restarts.
+  # Without this, models re-download on every container restart (slow + rate-limited).
+  nemo_cache:
+    driver: local
+
+# ── Private Network ─────────────────────────────────────────────────────────────
+networks:
+  mom_network:
+    driver: bridge

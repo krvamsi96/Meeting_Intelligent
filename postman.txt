@@ -1,0 +1,92 @@
+AI Meeting Intelligence — Corrected API Routing & Features List
+Base URL: http://localhost:8000/api/v1
+│
+├── 00 System & Infrastructure
+│   ├── GET  Health Check                /system/health
+│   ├── GET  Models Health Check         /system/health/models
+│   ├── GET  System Metrics              /system/metrics
+│   └── POST Clear Application Cache     /system/clear-cache
+│
+├── 01 Ingestion & Upload
+│   ├── POST Upload Media / Document     /upload
+│   └── POST Ingest from Universal URL   /process-url
+│
+├── 02 Meeting Management & Verification
+│   ├── GET  List All Meetings           /meetings
+│   ├── GET  Get Meeting by ID           /meetings/{meeting_id}
+│   ├── GET  Final Consolidated Record   /meetings/{meeting_id}/final
+│   ├── GET  Verify Meeting Outputs      /meetings/{meeting_id}/verify
+│   ├── POST Approve Meeting & Outputs   /meetings/{meeting_id}/approve
+│   ├── DEL  Delete Meeting & Vectors    /meetings/{meeting_id}
+│   ├── GET  Stream Media Audio/Video    /meetings/{meeting_id}/stream
+│   └── GET  Extract Audio/Video Clip    /meetings/{meeting_id}/clip?start={s}&end={e}
+│
+├── 03 NVIDIA NeMo Speaker Diarization
+│   ├── GET  Speaker Diarization Info    /meetings/{meeting_id}/diarization
+│   └── GET  Detailed Speaker Analytics  /meetings/{meeting_id}/speaker-analytics
+│
+├── 04 Agenda & Key Decisions
+│   ├── GET  By Meeting ID               /meetings/{meeting_id}/agenda-key-decisions
+│   └── GET  By Business ID (BharatVC)   /meetings/by-bharatvc-id/{bharatvc_meeting_id}/agenda-key-decisions
+│
+├── 05 Action Items
+│   ├── GET  By Meeting ID               /meetings/{meeting_id}/action-items
+│   ├── GET  By Business ID (BharatVC)   /meetings/by-bharatvc-id/{bharatvc_meeting_id}/action-items
+│   ├── GET  By Database Primary Key     /meetings/action-items/{action_item_id}
+│   └── GET  By Main Task / Identifier   /meetings/action-items/by-main-task/{main_task}
+│
+├── 06 Multi-Format Document Export
+│   ├── GET  Export Word Document (.docx) /meetings/{meeting_id}/export/docx
+│   ├── GET  Export Excel Sheet (.xlsx)  /meetings/{meeting_id}/export/xlsx
+│   ├── GET  Export HTML Document        /meetings/{meeting_id}/export/html
+│   ├── GET  Export PDF Document         /meetings/{meeting_id}/export/pdf
+│   ├── GET  Export Markdown Text (.md)  /meetings/{meeting_id}/export/md
+│   └── GET  Export JSON Schema (.json)  /meetings/{meeting_id}/export/json
+│
+├── 07 Metrics & Analytics
+│   ├── GET  10-Component AI Metrics     /meetings/{meeting_id}/metrics
+│   ├── GET  Live Metrics (12 Cards)     /evaluation/{meeting_id}/live-metrics
+│   ├── GET  Runtime Metrics             /evaluation/{meeting_id}/runtime-metrics
+│   └── GET  Runtime Quality Metrics     /evaluation/{meeting_id}/runtime-quality-metrics
+│
+├── 08 Pipeline Activity Logs & SSE
+│   ├── GET  Get Activity Logs           /meetings/{meeting_id}/activity-logs
+│   ├── GET  List Processing Runs        /meetings/{meeting_id}/activity-logs/processing-runs
+│   ├── POST Create New Processing Run   /meetings/{meeting_id}/activity-logs/new-run
+│   └── GET  Live SSE Event Stream       /meetings/{meeting_id}/activity-logs/stream
+│
+├── 09 RAG Conversational Chatbot
+│   ├── POST Send Chat Message (Sync)    /meetings/{meeting_id}/chat
+│   ├── POST Send Chat Message (Stream)  /meetings/{meeting_id}/chat/stream
+│   ├── GET  Get Chat History            /meetings/{meeting_id}/chat/history
+│   └── POST Clear Session History       /meetings/{meeting_id}/chat/clear
+│
+├── 10 True Evaluation Engine & Benchmarking
+│   ├── POST Upload Ground Truth         /evaluation/{meeting_id}/ground-truth
+│   ├── GET  Get Ground Truth            /evaluation/{meeting_id}/ground-truth
+│   ├── POST Run True Evaluation         /evaluation/{meeting_id}/evaluate
+│   ├── POST Force Re-Evaluation         /evaluation/{meeting_id}/re-evaluate
+│   ├── GET  Get Evaluation Results      /evaluation/{meeting_id}/results
+│   ├── GET  Evaluation Run History      /evaluation/{meeting_id}/history
+│   ├── GET  Comprehensive Eval Report   /evaluation/{meeting_id}
+│   ├── GET  Benchmark Aggregate Summary /evaluation/benchmark
+│   ├── GET  Benchmark Export (CSV)      /evaluation/benchmark/export
+│   ├── GET  Benchmark Accuracy Metrics  /evaluation/{meeting_id}/benchmark
+│   ├── GET  Benchmark History Logs      /evaluation/{meeting_id}/benchmark/history
+│   └── GET  Engine Metadata & Version   /evaluation/{meeting_id}/benchmark/version
+│
+├── 11 Similarity, Comparison & Duplicate Detection
+│   ├── GET  Find Similar Meetings       /meetings/{meeting_id}/similar
+│   ├── GET  Compare Two Meetings (AI)   /meetings/{meeting_id}/compare/{matched_id}
+│   └── GET  Detect Meeting Duplicates   /meetings/{meeting_id}/duplicate-check
+│
+└── 12 System Settings & Configuration
+    ├── GET  Get AI Provider Config      /settings/ai
+    ├── POST Update AI Provider Config   /settings/ai
+    ├── POST Test AI Connectivity        /settings/test
+    ├── GET  Get Report Settings         /settings/report
+    ├── POST Update Report Settings      /settings/report
+    ├── GET  Get Diarization Settings    /settings/diarization
+    ├── POST Update Diarization Settings /settings/diarization
+    ├── GET  Get Loop Engine Settings    /settings/loop-engine
+    └── POST Update Loop Engine Settings /settings/loop-engine

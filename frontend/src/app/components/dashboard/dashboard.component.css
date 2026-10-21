@@ -1,0 +1,31 @@
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.stat { display: flex; align-items: center; gap: 14px; text-decoration: none; color: inherit; padding: 16px 18px; }
+.stat:hover { border-color: var(--border-strong); }
+.stat-icon { width: 40px; height: 40px; border-radius: var(--radius-md); display: grid; place-items: center; flex-shrink: 0; }
+.tone-neutral { background: var(--bg-subtle); color: var(--text-muted); }
+.tone-success { background: var(--success-soft); color: var(--success); }
+.tone-info { background: var(--info-soft); color: var(--info); }
+.tone-danger { background: var(--danger-soft); color: var(--danger); }
+.stat-text { display: flex; flex-direction: column; }
+.stat-label { font-size: 0.84rem; color: var(--text-muted); font-weight: 600; }
+.stat-value { font-size: 1.6rem; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.stat-skeleton { width: 48px; height: 26px; margin-top: 4px; }
+
+.skeleton-row { height: 54px; margin-bottom: 10px; }
+.recent-list { list-style: none; display: flex; flex-direction: column; }
+.recent-item {
+  display: flex; align-items: center; gap: 14px; padding: 12px 8px; border-bottom: 1px solid var(--border);
+  text-decoration: none; color: inherit; border-radius: var(--radius-sm);
+}
+.recent-list li:last-child .recent-item { border-bottom: none; }
+.recent-item:hover { background: var(--bg-subtle); }
+.recent-icon { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); flex-shrink: 0; }
+.recent-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.recent-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 900px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) {
+  .stats { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat { padding: 12px; gap: 10px; }
+  .stat-icon { display: none; }
+}
